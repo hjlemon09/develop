@@ -1,0 +1,7 @@
+compileOnly 'jakarta.servlet.jsp:jakarta.servlet.jsp-api'
+
+compileOnly 'jakarta.el:jakarta.el-api'
+
+implementation 'org.glassfish.web:jakarta.servlet.jsp.jstl'
+
+implementation 'jakarta.servlet.jsp.jstl:jakarta.servlet.jsp.jstl-api'
