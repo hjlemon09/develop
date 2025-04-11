@@ -1,0 +1,132 @@
+좋은 질문입니다! @NotNull, @Size, @Email 등 기본 제공되는 어노테이션으로는 커버하기 어려운 복잡하거나 도메인 특화된 유효성 로직이 필요한 경우, 커스텀 ConstraintValidator + 어노테이션을 사용합니다.
+
+⸻
+
+언제 커스텀 제약을 만들어야 하나?
+
+다음과 같은 경우에 @ConstraintValidator를 직접 구현해 사용하는 것이 유리합니다:
+
+예시 1:
+
+특정 문자열 패턴 + 도메인 로직이 함께 필요한 경우
+	•	예: 주민등록번호 포맷 + 유효 날짜 검증
+	•	예: 비밀번호가 8자 이상이며, 대문자/소문자/숫자/특수문자를 모두 포함해야 하는 경우
+
+예시 2:
+
+필드 조합을 기반으로 조건 검증이 필요한 경우
+	•	예: startDate는 endDate보다 앞서야 함
+	•	예: 특정 필드가 비었을 때만 다른 필드가 필수임
+
+⸻
+
+예제: 비밀번호 강도 검사 어노테이션
+
+요구사항:
+	•	비밀번호는 8~20자 사이여야 하고
+	•	대문자 1개 이상, 소문자 1개 이상, 숫자 1개 이상, 특수문자 1개 이상 포함해야 함
+
+⸻
+
+1. 커스텀 어노테이션 생성
+
+import jakarta.validation.Constraint;
+import jakarta.validation.Payload;
+
+import java.lang.annotation.*;
+
+@Documented
+@Constraint(validatedBy = PasswordValidator.class)
+@Target({ ElementType.FIELD })
+@Retention(RetentionPolicy.RUNTIME)
+public @interface StrongPassword {
+    String message() default "비밀번호는 8~20자이며 대/소문자, 숫자, 특수문자를 모두 포함해야 합니다.";
+    Class<?>[] groups() default {};
+    Class<? extends Payload>[] payload() default {};
+}
+
+
+
+⸻
+
+2. ConstraintValidator 구현
+
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
+
+public class PasswordValidator implements ConstraintValidator<StrongPassword, String> {
+
+    @Override
+    public void initialize(StrongPassword constraintAnnotation) {
+        // 초기화 로직 필요시 작성
+    }
+
+    @Override
+    public boolean isValid(String password, ConstraintValidatorContext context) {
+        if (password == null) return false;
+        if (password.length() < 8 || password.length() > 20) return false;
+
+        boolean hasUpper = password.matches(".*[A-Z].*");
+        boolean hasLower = password.matches(".*[a-z].*");
+        boolean hasDigit = password.matches(".*\\d.*");
+        boolean hasSpecial = password.matches(".*[!@#$%^&*(),.?\":{}|<>].*");
+
+        return hasUpper && hasLower && hasDigit && hasSpecial;
+    }
+}
+
+
+
+⸻
+
+3. DTO에 적용
+
+public class SignupForm {
+
+    @StrongPassword
+    private String password;
+
+    // constructor, getter, setter 생략
+}
+
+
+
+⸻
+
+4. 테스트 코드
+
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
+
+import java.util.Set;
+import jakarta.validation.ConstraintViolation;
+
+public class Test {
+    public static void main(String[] args) {
+        SignupForm form = new SignupForm();
+        form.setPassword("weakpass");
+
+        ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+        Validator validator = factory.getValidator();
+
+        Set<ConstraintViolation<SignupForm>> violations = validator.validate(form);
+        for (ConstraintViolation<SignupForm> violation : violations) {
+            System.out.println(violation.getPropertyPath() + ": " + violation.getMessage());
+        }
+    }
+}
+
+
+
+⸻
+
+출력 예:
+
+password: 비밀번호는 8~20자이며 대/소문자, 숫자, 특수문자를 모두 포함해야 합니다.
+
+
+
+⸻
+
+필요하다면 필드 간 상호 비교, 동적 조건, 데이터베이스 존재 여부 같은 고급 커스텀 검증 예제도 추가해드릴 수 있어요. 원하시면 말씀 주세요!
