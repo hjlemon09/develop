@@ -1,0 +1,112 @@
+아래는 Java로 작성된 코드입니다.
+readHtmlTags() 메서드는 파일을 읽고 Map<String, List<String>> 형태로 html: 태그별로 그룹화하며,
+writeGroupedTagsToFile() 메서드는 해당 Map 데이터를 .txt 파일로 출력합니다.
+
+⸻
+
+Java 코드:
+
+import java.io.*;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
+import java.util.*;
+
+public class HtmlTagExtractor {
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("폴더 경로를 입력하세요: ");
+        String folderPath = scanner.nextLine();
+
+        try {
+            Map<String, List<String>> groupedMap = readHtmlTags(folderPath);
+            writeGroupedTagsToFile(groupedMap, "html_tags_result.txt");
+            System.out.println("html_tags_result.txt 파일이 생성되었습니다.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // 파일을 읽고 html 태그별로 그룹화
+    public static Map<String, List<String>> readHtmlTags(String folderPath) throws IOException {
+        Map<String, List<String>> groupedTags = new LinkedHashMap<>();
+
+        Files.walk(Paths.get(folderPath))
+                .filter(Files::isRegularFile)
+                .forEach(filePath -> {
+                    File file = filePath.toFile();
+                    List<Charset> encodings = Arrays.asList(
+                            StandardCharsets.UTF_8,
+                            StandardCharsets.ISO_8859_1,
+                            Charset.forName("EUC-KR")
+                    );
+
+                    for (Charset charset : encodings) {
+                        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), charset))) {
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                if (line.contains("html:")) {
+                                    String tag = extractTag(line);
+                                    if (tag != null) {
+                                        String formatted = String.format("%s | %s | %s | %s", tag, line.trim(), file.getAbsolutePath(), charset.name());
+                                        groupedTags.computeIfAbsent(tag, k -> new ArrayList<>()).add(formatted);
+                                    }
+                                }
+                            }
+                            break; // 성공하면 다른 인코딩 시도하지 않음
+                        } catch (IOException e) {
+                            // 다음 인코딩으로 시도
+                        }
+                    }
+                });
+
+        return groupedTags;
+    }
+
+    // 결과를 파일로 출력
+    public static void writeGroupedTagsToFile(Map<String, List<String>> groupedMap, String outputPath) throws IOException {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath))) {
+            for (Map.Entry<String, List<String>> entry : groupedMap.entrySet()) {
+                for (String line : entry.getValue()) {
+                    writer.write(line);
+                    writer.newLine();
+                }
+            }
+        }
+    }
+
+    // html: 태그 추출
+    private static String extractTag(String line) {
+        int index = line.indexOf("html:");
+        if (index != -1) {
+            StringBuilder tag = new StringBuilder("html:");
+            for (int i = index + 5; i < line.length(); i++) {
+                char c = line.charAt(i);
+                if (Character.isLetterOrDigit(c)) {
+                    tag.append(c);
+                } else {
+                    break;
+                }
+            }
+            return tag.toString();
+        }
+        return null;
+    }
+}
+
+
+
+⸻
+
+예시 출력 (html_tags_result.txt):
+
+html:form | <html:form action="/submit"> | C:\project\example1.jsp | UTF-8
+html:form | <html:form method="post"> | C:\project\example2.jsp | UTF-8
+html:hidden | <html:hidden property="id" /> | C:\project\example3.jsp | UTF-8
+
+
+
+⸻
+
+필요에 따라 정렬 방식이나 출력 형식을 더 조정할 수 있습니다. 추가로 확장하거나 다른 기능을 넣고 싶다면 알려 주세요!
