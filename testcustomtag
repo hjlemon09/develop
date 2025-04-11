@@ -1,0 +1,109 @@
+아래는 @ValidAge 어노테이션을 적용한 **form 클래스(UserForm.java)**와, 사용자가 생년월일을 입력할 수 있는 **JSP 페이지(form.jsp)**의 예시입니다.
+
+⸻
+
+1. UserForm.java – 커스텀 유효성 검증 어노테이션 사용
+
+import jakarta.validation.constraints.NotNull;
+import java.time.LocalDate;
+
+public class UserForm {
+
+    @NotNull(message = "생년월일은 필수 입력 항목입니다.")
+    @ValidAge(min = 18, message = "만 {min}세 이상이어야 합니다.")
+    private LocalDate birthDate;
+
+    // getter/setter
+    public LocalDate getBirthDate() {
+        return birthDate;
+    }
+
+    public void setBirthDate(LocalDate birthDate) {
+        this.birthDate = birthDate;
+    }
+}
+
+
+
+⸻
+
+2. form.jsp – 사용자 입력 폼 (JSP + JSTL + Spring MVC 환경 기준)
+
+<%@ taglib prefix="form" uri="http://www.springframework.org/tags/form" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<html>
+<head>
+    <title>회원 가입</title>
+</head>
+<body>
+    <h2>생년월일 입력</h2>
+
+    <form:form modelAttribute="userForm" method="post" action="/submit">
+        <table>
+            <tr>
+                <td><form:label path="birthDate">생년월일</form:label></td>
+                <td><form:input path="birthDate" type="date" /></td>
+                <td><form:errors path="birthDate" cssClass="error" /></td>
+            </tr>
+            <tr>
+                <td colspan="3">
+                    <input type="submit" value="제출" />
+                </td>
+            </tr>
+        </table>
+    </form:form>
+</body>
+</html>
+
+
+
+⸻
+
+3. 컨트롤러 예시 (UserController.java)
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.*;
+
+import jakarta.validation.Valid;
+
+@Controller
+public class UserController {
+
+    @GetMapping("/form")
+    public String showForm(Model model) {
+        model.addAttribute("userForm", new UserForm());
+        return "form";
+    }
+
+    @PostMapping("/submit")
+    public String submitForm(@ModelAttribute("userForm") @Valid UserForm form,
+                             BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return "form";
+        }
+
+        // 처리 로직 (DB 저장 등)
+        return "success";
+    }
+}
+
+
+
+⸻
+
+4. 결과 동작
+	•	사용자가 생년월일을 선택하고 제출하면 @ValidAge가 min=18 조건을 검증합니다.
+	•	18세 미만인 경우 오류 메시지를 JSP에 표시합니다.
+	•	조건에 맞으면 success.jsp로 이동하거나 처리 수행.
+
+⸻
+
+필요하다면:
+	•	JSP 대신 Thymeleaf 사용 예
+	•	메시지 다국어화
+	•	날짜 형식 처리 (컨버터 등)
+	•	LocalDate를 문자열로 바인딩하는 설정
+
+등도 도와드릴 수 있어요!
